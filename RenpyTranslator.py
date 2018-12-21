@@ -68,7 +68,7 @@ class TranslationFile:
             f.close()
             return True
 
-    def translate(self, reverseTranslation):
+    def translate(self, create_backups, reverse_translation):
         if self.getNumberOfTranslations() == 0:
             return False
         
@@ -86,7 +86,7 @@ class TranslationFile:
             f.close()
 
         # Reverse the Translation?
-        if not reverseTranslation:
+        if not reverse_translation:
             t_informations = self.translation_informations
         else:
             t_informations = self.reverse_translation_informations
@@ -98,14 +98,21 @@ class TranslationFile:
             data = data.replace(old_string, new_string)
 
         # Backup the original file
-        backup_file_name = script_file
-        while os.path.isfile(backup_file_name):
-            backup_file_name += ".bak"
-        try:
-            os.rename(script_file, backup_file_name)
-        except:
-            print("Error -> An exception occured while proceeding file", backup_file_name)
-            return False
+        if create_backups:
+            backup_file_name = script_file
+            while os.path.isfile(backup_file_name):
+                backup_file_name += ".bak"
+            try:
+                os.rename(script_file, backup_file_name)
+            except:
+                print("Error -> An exception occured while proceeding file", backup_file_name)
+                return False
+        else:
+            try:
+                os.remove(script_file)
+            except:
+                print("Error -> Couldnt delete original file", script_file)
+                return False
 
         # Save the translated file
         translated_file = open(script_file, "w", encoding="utf-8")
@@ -119,11 +126,12 @@ class TranslationFile:
 
 # print out help text
 def usage():
-    print("usage: RenpyTranslator.py [-h] -t <path> -s <path> [-r]")
+    print("usage: RenpyTranslator.py [-h] -t <path> -s <path> [-r] [-n]")
     print("     -h ... this help text")
     print("     -t ... directory with translation files")
     print("     -s ... directory with script files")
     print("     -r ... optional, reverse translation")
+    print("     -n ... dont create backups")
     print()
     print("example: RenpyTranslator.py -t ./game/ -s ./game/tl/english/")
     print()
@@ -131,6 +139,10 @@ def usage():
 
 
 # MAIN PROGRAM START
+
+print()
+print("-" * 80)
+print("RENPY-TRANSLATOR (created by Gene74 in 2018)")
 
 # Folder with translation files
 path_translation_files = ''
@@ -141,6 +153,9 @@ path_script_files = ''
 # Should the translation be reversed?
 reverse_translation = False
 
+# Should a backup file be created
+create_backup_files = True
+
 #Read Arguments
 if len(sys.argv) < 5:
     print("\nNot enough arguments, see usage below:\n")
@@ -148,7 +163,7 @@ if len(sys.argv) < 5:
     sys.exit(0)
     
 try:
-    opts, args = getopt.getopt(sys.argv[1:],"ht:s:r")
+    opts, args = getopt.getopt(sys.argv[1:],"ht:s:rn")
 
 except getopt.GetoptError:
     usage()
@@ -177,6 +192,10 @@ for opt, arg in opts:
     elif opt == '-r':
         reverse_translation = True
 
+    elif opt == '-n':
+        create_backup_files = False
+
+
 if path_translation_files == '' or path_script_files == '':
     usage()
     sys.exit(0)
@@ -188,7 +207,6 @@ translated_files = 0
 non_translated_files = 0
 
 print()
-print("----------------------------------------------------")
 print("processing files ...")
 
 for filename in os.listdir(path_translation_files):
@@ -199,7 +217,7 @@ for filename in os.listdir(path_translation_files):
 
         if translation_file.readTranslations() and translation_file.hasTranslations():
 
-            if translation_file.translate(reverse_translation):
+            if translation_file.translate(create_backup_files, reverse_translation):
                 print(path_script_files+filename, "-> translated successfully")
                 translated_files += 1
 
@@ -213,10 +231,10 @@ if checked_files == 0:
     sys.exit(0)
 
 else:
-    print("----------------------------------------------------")
+    print()
     print("translated files    :", str(translated_files))
     print("non-translated files:", str(non_translated_files))
-    print("----------------------------------------------------")
+    print("-" * 80)
     print()
 
 # PROGRAM END
