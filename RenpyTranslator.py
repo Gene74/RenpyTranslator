@@ -120,7 +120,7 @@ def usage():
     print("     -r ... optional, reverse translation")
     print("     -n ... dont create backups")
     print()
-    print("example: RenpyTranslator.py -t ./game/ -s ./game/tl/english/")
+    print("example: RenpyTranslator.py -t ./game -s ./game/tl/english")
     print()
     return
 
@@ -165,14 +165,16 @@ for opt, arg in opts:
 
     elif opt == '-t':
         path_translation_files = arg
-
+        if not path_translation_files.endswith("/"):
+            path_translation_files += "/"
         if not os.path.isdir(path_translation_files):
             print("Path to translation files '" + path_translation_files + "' -> could not be found!")
             sys.exit(0)
 
     elif opt == '-s':
         path_script_files = arg
-
+        if not path_script_files.endswith("/"):
+            path_script_files += "/"
         if not os.path.isdir(path_script_files):
             print("Path to script files '" + path_script_files + "' -> could not be found!")
             sys.exit(0)
