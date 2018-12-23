@@ -1,130 +1,117 @@
 # Librarys
+
 import sys
 import getopt
 import os
 import re
 
 
-# Translation Class
-class TranslationFile:
+# Methods
 
-    file_name = ''                          # This filename is the same in both directories
-    path_translation_files = ''             # Directory with translation files
-    path_script_files = ''                  # Directory with files to translate
-    translation_informations = {}           # All found translation pairs
-    reverse_translation_informations = {}   # All found translation pairs reversed
+def getNumberOfTranslations():
+    return len(translation_informations)
 
-    def __init__(self, file_name, path_translation_files, path_script_files):
-        self.file_name = file_name
-        self.path_translation_files = path_translation_files
-        self.path_script_files = path_script_files
+def hasTranslations():
+    return getNumberOfTranslations() > 0
 
-    def getNumberOfTranslations(self):
-        return len(self.translation_informations)
+def getFullTranslationPath(file_name):
+    return path_translation_files + file_name
 
-    def hasTranslations(self):
-        return self.getNumberOfTranslations() > 0
+def getFullScriptPath(file_name):
+    return path_script_files + file_name
 
-    def getFullTranslationPath(self):
-        return self.path_translation_files + self.file_name
 
-    def getFullScriptPath(self):
-        return self.path_script_files + self.file_name
+def readTranslations(file_name):
+    translation_file = getFullTranslationPath(file_name)
+    try:
+        f = open(translation_file, "r", encoding="utf-8")
+    except:
+        print("Error ->", translation_file, "does not exist!")
+        return False
+    else:
+        first_string = ''
+        first_line_nr = 0
+        
+        line_nr = 0
+        for line in f.readlines():
+            line_nr += 1
+            text = re.search("(\".*?\")",line)
 
-    def readTranslations(self):
-        translation_file = self.getFullTranslationPath()
-        try:
-            f = open(translation_file, "r", encoding="utf-8")
-        except:
-            print("Error -> File", translation_file, "does not exist!")
-            return False
-        else:
-            first_string = ''
-            first_line_nr = 0
-            
-            line_nr = 0
-            for line in f.readlines():
-                line_nr += 1
-                text = re.search("(\".*?\")",line)
+            if text != None:
+                text = text.group(1)
+                if first_string == '' or line_nr > first_line_nr + 1:
+                    first_string = text
+                    first_line_nr = line_nr
 
-                if text != None:
-                    text = text.group(1)
-                    if first_string == '' or line_nr > first_line_nr + 1:
-                        first_string = text
-                        first_line_nr = line_nr
-
-                    elif line_nr == first_line_nr + 1:
-                        self.translation_informations[first_string] = text
-                        self.reverse_translation_informations[text] = first_string
-                        first_string = ''
-                        first_line_nr = 0
-
-                    else:
-                        first_string = ''
-                        first_line_nr = 0
+                elif line_nr == first_line_nr + 1:
+                    translation_informations[first_string] = text
+                    reverse_translation_informations[text] = first_string
+                    first_string = ''
+                    first_line_nr = 0
 
                 else:
-                    continue
-            f.close()
-            return True
+                    first_string = ''
+                    first_line_nr = 0
 
-    def translate(self, create_backups, reverse_translation):
-        if self.getNumberOfTranslations() == 0:
-            return False
-        
-        # Read all lines
-        script_file = self.getFullScriptPath()
-        try:
-            f = open(script_file, "r", encoding="utf-8")
-        except:
-            print("Error -> File", script_file, "does not exist!")
-            return False
-        else:
-            data = ''
-            for line in f:
-                data += line
-            f.close()
-
-        # Reverse the Translation?
-        if not reverse_translation:
-            t_informations = self.translation_informations
-        else:
-            t_informations = self.reverse_translation_informations
-
-        # Proceed with the translation
-        for key in t_informations:
-            old_string = key
-            new_string = t_informations[key]
-            data = data.replace(old_string, new_string)
-
-        # Backup the original file
-        if create_backups:
-            backup_file_name = script_file
-            while os.path.isfile(backup_file_name):
-                backup_file_name += ".bak"
-            try:
-                os.rename(script_file, backup_file_name)
-            except:
-                print("Error -> An exception occured while proceeding file", backup_file_name)
-                return False
-        else:
-            try:
-                os.remove(script_file)
-            except:
-                print("Error -> Couldnt delete original file", script_file)
-                return False
-
-        # Save the translated file
-        translated_file = open(script_file, "w", encoding="utf-8")
-        translated_file.write(data)
-        translated_file.close()
+            else:
+                continue
+        f.close()
         return True
 
-    def printAll(self):
-        print(self.translation_informations)
+
+def translate(file_name, create_backups, reverse_translation):
+    if not hasTranslations():
+        return False
+    
+    # Read all lines
+    script_file = getFullScriptPath(file_name)
+    try:
+        f = open(script_file, "r", encoding="utf-8")
+    except:
+        print("Error ->", script_file, "does not exist!")
+        return False
+    else:
+        data = ''
+        for line in f:
+            data += line
+        f.close()
+
+    # Reverse the Translation?
+    if not reverse_translation:
+        t_informations = translation_informations
+    else:
+        t_informations = reverse_translation_informations
+
+    # Proceed with the translation
+    for key in t_informations:
+        old_string = key
+        new_string = t_informations[key]
+        data = data.replace(old_string, new_string)
+
+    # Backup the original file
+    if create_backups:
+        backup_file_name = script_file
+        while os.path.isfile(backup_file_name):
+            backup_file_name += ".bak"
+        try:
+            os.rename(script_file, backup_file_name)
+        except:
+            print("Error -> An exception occured while proceeding file", backup_file_name)
+            return False
+    else:
+        try:
+            os.remove(script_file)
+        except:
+            print("Error -> Couldn't delete original file", script_file)
+            return False
+
+    # Save the translated file
+    translated_file = open(script_file, "w", encoding="utf-8")
+    translated_file.write(data)
+    translated_file.close()
+    return True
 
 
-# print out help text
 def usage():
     print("usage: RenpyTranslator.py [-h] -t <path> -s <path> [-r] [-n]")
     print("     -h ... this help text")
@@ -143,17 +130,18 @@ def usage():
 print()
 print("-" * 80)
 print("RENPY-TRANSLATOR (created by Gene74 in 2018)")
+print("-" * 80)
 
-# Folder with translation files
+# Folders
 path_translation_files = ''
-
-# Folder with script files
 path_script_files = ''
 
-# Should the translation be reversed?
-reverse_translation = False
+# Translation Informations
+translation_informations = {}           # All found translation pairs
+reverse_translation_informations = {}   # All found translation pairs reversed
 
-# Should a backup file be created
+# Flags
+reverse_translation = False
 create_backup_files = True
 
 #Read Arguments
@@ -201,37 +189,53 @@ if path_translation_files == '' or path_script_files == '':
     sys.exit(0)
 
 
-# Read files
-checked_files = 0
+# File Counters
+translation_files = 0
 translated_files = 0
 non_translated_files = 0
 
+# Read translation files
 print()
-print("processing files ...")
+print("reading translation files:")
+print("--------------------------")
 
 for filename in os.listdir(path_translation_files):
-
     if filename.endswith(".rpy"):
-        checked_files += 1
-        translation_file = TranslationFile(filename, path_translation_files, path_script_files)
+        print(getFullTranslationPath(filename), "...", end='')
+        translation_files += 1
+        if readTranslations(filename):
+            print(" OK")
+        else:
+            print(" FAIL")
+            
 
-        if translation_file.readTranslations() and translation_file.hasTranslations():
-
-            if translation_file.translate(create_backup_files, reverse_translation):
-                print(path_script_files+filename, "-> translated successfully")
-                translated_files += 1
-
-            else:
-                print(path_script_files+filename, "-> was not translated")
-                non_translated_files += 1
-
-
-if checked_files == 0:
+# Continue with translation?
+if translation_files == 0:
     print("There was no translation file found in path '" + path_translation_files + "'")
     sys.exit(0)
 
+elif not hasTranslations():
+    print("No translation informations were found in translation files in path '" + path_translation_files + "'")
+    sys.exit(0)
+
 else:
+    # Translate script files
     print()
+    print("translate script files:")
+    print("-----------------------")
+
+    for filename in os.listdir(path_script_files):
+        if filename.endswith(".rpy"):
+            print(getFullScriptPath(filename), "...", end='')
+            if translate(filename, create_backup_files, reverse_translation):
+                print(" OK")
+                translated_files += 1
+            else:
+                print(" FAIL")
+                non_translated_files += 1
+
+    print()
+    print("-" * 80)
     print("translated files    :", str(translated_files))
     print("non-translated files:", str(non_translated_files))
     print("-" * 80)
